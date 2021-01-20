@@ -61,28 +61,29 @@ payload map($.domain)]]></ee:set-payload>
 	
 </flow>
 	<flow name="grafana-key-generation" doc:id="91c57261-7ea2-4cf5-bb30-21c2695198cc" >
-		<try doc:name="Try" doc:id="1f48942c-b451-46cf-9088-21e5a230170d" >
-			<http:request method="POST" doc:name="Request to grafana for api-key" doc:id="574e519e-13f0-43ae-9f50-bf1fe5e69701" config-ref="grafana_req_config_basicauth" path="/api/auth/keys" target="api-key" targetValue="#[payload.key]">
+		<os:retrieve doc:name="Retrieve the api-key" doc:id="fb7febcd-8963-40b3-a639-3febba60b571" key="api-key-grafana" objectStore="Object_store" target="api-key">
+				<os:default-value><![CDATA[#[0]]]></os:default-value>
+					</os:retrieve>
+		<choice doc:name="checking if the api-key is there in OS" doc:id="1d608e69-7221-45da-9d61-445ca4da7356">
+			<when expression="#[vars.'api-key' == 0]">
+				<http:request method="POST" doc:name="Request to grafana for api-key" doc:id="574e519e-13f0-43ae-9f50-bf1fe5e69701" config-ref="grafana_req_config_basicauth" path="/api/auth/keys" target="api-key" targetValue="#[payload.key]">
 			<http:body><![CDATA[#[output application/json
 ---
-{"name":"api-demo", "role": "Admin"}]]]></http:body>
+{"name":"api-sushmitha", "role": "Admin"}]]]></http:body>
 			<http:headers><![CDATA[#[output application/java
 ---
 {
 	"Content-Type" : "application/json"
 }]]]></http:headers>
 		</http:request>
-			<os:store doc:name="store the api-key" doc:id="f75900a6-37e8-443d-ab95-ced17da91052" key="api-key-grafana" objectStore="Object_store">
-				<os:value ><![CDATA[#[vars.'api-key']]]></os:value>
+				<os:store doc:name="store the api-key" doc:id="f75900a6-37e8-443d-ab95-ced17da91052" key="api-key-grafana" objectStore="Object_store">
+				<os:value><![CDATA[#[vars.'api-key']]]></os:value>
 			</os:store>
-			<error-handler >
-				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="e48074f0-6140-4db6-96f9-c77ec3e1c673" >
-					<logger level="INFO" doc:name="Logger" doc:id="9d6ba892-d4e7-40cb-a9d8-241a586ac0e5" message='#[""]'/>
-					<os:retrieve doc:name="Retrieve the api-key" doc:id="fb7febcd-8963-40b3-a639-3febba60b571" key="api-key-grafana" objectStore="Object_store" target="api-key">
-					</os:retrieve>
-				</on-error-continue>
-			</error-handler>
-		</try>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="api-key already exists" doc:id="9d6ba892-d4e7-40cb-a9d8-241a586ac0e5" message='#[""]' />
+			</otherwise>
+		</choice>
 	</flow>
 	<flow name="app-logs-batch-flow" doc:id="6c7afc6d-202b-47fd-b313-957c6ae0905a" >
 		<set-variable value="#[payload]" doc:name="Set Variable Domain" doc:id="a2d3561f-7c57-4caa-b0d0-2b14402f07cc" variableName="domain" />
@@ -224,7 +225,608 @@ output application/json
 	"Authorization" : "Bearer " ++ vars.'api-key'
 }]]]></http:headers>
 		</http:request>
-	</flow>
+		<http:request method="POST" doc:name="Request to create dashboards and panels" doc:id="19f867d0-4cb7-4867-a7b2-3ef7e2bee9da" config-ref="grafana_req_config" path="/api/dashboards/db">
+			<http:body ><![CDATA[#[output application/json
+---
+{
+   "dashboard":
+    {
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": vars.domain,
+      "description": "Frequency of API hits",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "hiddenSeries": false,
+      "id": 6,
+      "legend": {
+        "alignAsTable": true,
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "rightSide": true,
+        "show": true,
+        "total": true,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.3.6",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "\"Request received to mytrains-system-api\"",
+          "refId": "A",
+          "timeField": "@timestamp"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "API -Hits",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": "No Of Hits",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": true,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": vars.domain,
+      "decimals": 0,
+      "description": "No of times each HTTP method is invoked",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": null,
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "hiddenSeries": false,
+      "id": 8,
+      "legend": {
+        "alignAsTable": true,
+        "avg": false,
+        "current": false,
+        "hideEmpty": false,
+        "hideZero": false,
+        "max": false,
+        "min": false,
+        "rightSide": true,
+        "show": true,
+        "total": true,
+        "values": true
+      },
+      "lines": false,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.3.6",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "alias": "POST",
+          "bucketAggs": [
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "meta": {},
+              "settings": {},
+              "type": "count"
+            }
+          ],
+          "query": "\"content\" AND \"POST\"",
+          "refId": "A",
+          "timeField": "@timestamp"
+        },
+        {
+          "alias": "GET",
+          "bucketAggs": [
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "\"content\" AND \"GET\"",
+          "refId": "B",
+          "timeField": "@timestamp"
+        },
+        {
+          "alias": "DELETE",
+          "bucketAggs": [
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "\"content\" AND \"DELETE\"",
+          "refId": "C",
+          "timeField": "@timestamp"
+        },
+        {
+          "alias": "PUT",
+          "bucketAggs": [
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "\"content\" AND \"PUT\"",
+          "refId": "D",
+          "timeField": "@timestamp"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Frequency of HTTP methods",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "Time",
+                "POST",
+                "GET",
+                "DELETE",
+                "PUT"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": "Count",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": true,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": vars.domain,
+      "decimals": 0,
+      "description": "Frequency of an error code.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": null,
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "@timestamp"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 186
+              }
+            ]
+          }
+        ]
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "hiddenSeries": false,
+      "id": 4,
+      "legend": {
+        "alignAsTable": true,
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "rightSide": true,
+        "show": true,
+        "total": true,
+        "values": true
+      },
+      "lines": false,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.3.6",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "alias": "Error Code 400",
+          "bucketAggs": [
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "hide": false,
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "meta": {},
+              "settings": {},
+              "type": "count"
+            }
+          ],
+          "query": "\"Message\" AND \"Error\" AND \"bad request (400)\"",
+          "refId": "A",
+          "timeField": "@timestamp"
+        },
+        {
+          "alias": "Error Code 401",
+          "bucketAggs": [
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "hide": false,
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "\"Message\" AND \"Error\" AND \"unathorized (401)\"",
+          "refId": "B",
+          "timeField": "@timestamp"
+        },
+        {
+          "alias": "Error Code 500",
+          "bucketAggs": [
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "hide": false,
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "\"Message\" AND \"Error\" AND \"internal server error (500)\"",
+          "refId": "C",
+          "timeField": "@timestamp"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Frequency of Error Codes",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "Time",
+                "Error Code 401",
+                "Error Code 500",
+                "Error Code 400"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": "Count",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    }
+  ],
+  "schemaVersion": 26,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "title": vars.domain,
+  "uid": null,
+  "version": 1
+}
+}]]]></http:body>
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Content-Type" : "application/json",
+	"Authorization" : "Bearer "  ++ vars.'api-key' as String default " "
+	
+}]]]></http:headers>
+		</http:request>
+	
+</flow>
 	<flow name="key-deletion-flow" doc:id="44288768-1c6a-482c-8bbf-3adc5bba65a7" >
 		<http:listener doc:name="Listener" doc:id="93dd071c-2947-4106-971c-a9d89dcc2e8a" config-ref="httpListenerConfig" path="/deleteKey" allowedMethods="POST"/>
 		<os:remove doc:name="Remove" doc:id="0cadbfa1-919c-4019-afbc-f7dee597540a" key="#[attributes.queryParams.key]" objectStore="Object_store"/>
