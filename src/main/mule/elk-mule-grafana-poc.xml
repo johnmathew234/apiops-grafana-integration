@@ -53,9 +53,9 @@ output application/json
 payload map($.domain)]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<foreach doc:name="For Each" doc:id="13c8f8cd-de52-4e13-baed-6a2cc07c42a3" >
+		<foreach doc:name="For Each" doc:id="89927141-d867-4af1-8a4b-430df9059542" >
 			<flow-ref doc:name="Call App Logs Batch Flow" doc:id="c6cd2b62-2d42-48b7-a4c4-52f2a716ef59" name="app-logs-batch-flow" />
-			<logger level="INFO" doc:name="Log extraction started" doc:id="ad987c0f-1cf8-4a6f-82d1-fc21584e4938" message='#["LOG EXTRACTION STARTED"]'/>
+			<logger level="INFO" doc:name="Log extraction started" doc:id="ad987c0f-1cf8-4a6f-82d1-fc21584e4938" message='#["LOG EXTRACTION STARTED"]' />
 		</foreach>
 		<logger level="INFO" doc:name="Exit Logger" doc:id="cd9e1d41-8f5a-42be-9072-0aa61e6c13b3" message="----Application Logs Extraction Completed"/>
 	
@@ -69,7 +69,7 @@ payload map($.domain)]]></ee:set-payload>
 				<http:request method="POST" doc:name="Request to grafana for api-key" doc:id="574e519e-13f0-43ae-9f50-bf1fe5e69701" config-ref="grafana_req_config_basicauth" path="/api/auth/keys" target="api-key" targetValue="#[payload.key]">
 			<http:body><![CDATA[#[output application/json
 ---
-{"name":"api-sushmitha", "role": "Admin"}]]]></http:body>
+{"name":"api-api", "role": "Admin"}]]]></http:body>
 			<http:headers><![CDATA[#[output application/java
 ---
 {
@@ -239,7 +239,7 @@ output application/json
   "panels": [
     {
       "aliasColors": {},
-      "bars": false,
+      "bars": true,
       "dashLength": 10,
       "dashes": false,
       "datasource": vars.domain,
@@ -271,7 +271,7 @@ output application/json
         "total": true,
         "values": true
       },
-      "lines": true,
+      "lines": false,
       "linewidth": 1,
       "nullPointMode": "null",
       "options": {
@@ -307,7 +307,7 @@ output application/json
               "type": "count"
             }
           ],
-          "query": "\"Request received to mytrains-system-api\"",
+          "query": "\"Request received to api\"",
           "refId": "A",
           "timeField": "@timestamp"
         }
