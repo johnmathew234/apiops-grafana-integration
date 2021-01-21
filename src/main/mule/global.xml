@@ -31,6 +31,9 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 	<http:request-config name="grafana_req_config" doc:name="HTTP Request configuration" doc:id="c6bc465e-aede-4215-8b22-019537c5f69a" >
 		<http:request-connection host="localhost" port="3000"/>
 	</http:request-config>
+	<http:request-config name="cloudhub-api" doc:name="HTTP Request configuration" doc:id="da279dde-b148-459e-9443-fcad7f9a5fd5" >
+		<http:request-connection host="anypoint.mulesoft.com" protocol="HTTPS"/>
+	</http:request-config>
 	<error-handler name="globalError_Handler" doc:id="2c03fd11-bd98-4da5-a060-99facd67a80b" >
 		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="6af14b27-6965-4785-bc81-c83656cb3b0c" type="HTTP:BAD_REQUEST, HTTP:CONNECTIVITY, HTTP:FORBIDDEN">
 			<logger level="INFO" doc:name="Logger" doc:id="1024a08d-b588-44ad-9f9a-cb40aeac91a1" message='#[output application/json
