@@ -161,7 +161,7 @@ if(item.event.message contains("correlationId"))((read (item.event.message, "app
 )
 ---
 
-temp map ((item, index) ->if(keysOf(item)[0] contains  "correlationId")((((item - "elapsed") - "applicationVersion") - "threadName") - "locationInfo" ++ ("fileName" : item.locationInfo.fileName) ++ ("rootContainer" : item.locationInfo.rootContainer) ++ ("deploymentId" : item.deploymentId))  else ((item - "event") - "recordId") ++ (("loggerName" : item.event.loggerName) ++ ("threadName" : item.event.threadName) ++ ("message" : item.event.message) ++ ("priority" : item.event.priority) ++ ("timestamp" : ( ((item.event.timestamp as Number/1000) as DateTime  + |PT5H30M|) as String {format:"yyyy-MM-dd HH:mm:ss"})) ++ ("recordId" : item.recordId)))
+temp map ((item, index) ->if(keysOf(item)[0] contains  "correlationId")((((item - "elapsed") - "applicationVersion") - "threadName") - "locationInfo" ++ ("fileName" : item.locationInfo.fileName) ++ ("rootContainer" : item.locationInfo.rootContainer) )  else ((item - "event") - "recordId") ++ (("loggerName" : item.event.loggerName) ++ ("threadName" : item.event.threadName) ++ ("message" : item.event.message) ++ ("priority" : item.event.priority) ++ ("timestamp" : ( ((item.event.timestamp as Number/1000) as DateTime  + |PT5H30M|) as String {format:"yyyy-MM-dd HH:mm:ss"})) ++ ("recordId" : item.recordId)))
 
 //read(payload,"application/json")
 
@@ -200,15 +200,14 @@ temp map ((item, index) ->if(keysOf(item)[0] contains  "correlationId")((((item 
 				</http:request>
 				<ee:transform doc:name="transforming app stats" doc:id="f811cda1-bee4-4f79-a123-7876f4bb69d2">
 					<ee:message>
-					</ee:message>
-					<ee:variables >
-						<ee:set-variable variableName="cloudRes" ><![CDATA[%dw 2.0
+						<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
 ---
 
 // application overview panel
+vars.appLogs  ++
 
-{
+[{
     "status" : payload.status,
     "runtime" : payload.muleVersion.version,
     "name" : payload.workers."type".name,
@@ -220,11 +219,80 @@ output application/json
     "remainingOrgWorkers" :payload.workers.remainingOrgWorkers,
     "deployedRegion" : payload.workerStatuses.deployedRegion[0],
  ("lastUpdateTime" :  ( ((payload.lastUpdateTime as Number/1000) as DateTime  + |PT5H30M|) as String {format:"yyyy-MM-dd HH:mm:ss"})) 
-}]]></ee:set-variable>
+}]]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
 					</ee:variables>
 				</ee:transform>
+				<ee:transform doc:name="transforming app stats and app Logs" doc:id="b0bac801-0eed-4c23-aabf-edd47606b614">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+/*
+payload map(item,index)->
+{
+	"data": "recordId: " as String ++ item.recordId  as String default " " ++ ", deploymentId: " as String ++ item.deploymentId default " " as String ++ ", instanceId: " as String ++ item.instanceId default " " as String ++ ", line: " as String ++ item.line default " " as String ++ ", event: {loggerName: " as String ++ item.event.loggerName as String ++ ", threadName: " as String ++ item.event.threadName as String ++ ", message: " as String ++ item.event.message as String ++ ", priority: " as String ++ item.event.priority as String ++ ", timestamp: " as String ++ item.event.timestamp as String ++ "}" as String
+}
+*/
+
+payload map (item, index) -> (
+     if((keysOf(item)[0] contains("correlationId")))("{correlationId: " as String ++ item.correlationId as String default " " ++ ", message: " as String ++ item.message  as String default " "
+++ ", tracePoint: " as String ++ item.tracePoint  as String default " "
+ ++ ", priority: " as String ++ item.priority  as String default " "
+++ ", timestamp: " as String ++ item.timestamp  as String default " "
+++ ", content: " as String ++ (write(item.content, "application/json") as String replace  /[^a-z0-9A-Z {:,.}]/ with "") 
+++ ", applicationName: " as String ++ item.applicationName  as String default " "
+++ ", environment: " as String ++ item.environment  as String default " "
+ ++ ", deploymentId: " as String ++ item.deploymentId  as String default " "
+++ ", line: " as String ++ item.line  as String default " "
+++ ", recordId: " as String ++ item.recordId  as String default " "
+++ ", fileName: " as String ++ item.fileName  as String default " "
+
+++ ", rootContainer: " as String ++ item.rootContainer  as String default " " ++ "}"
+
+ ) else if((keysOf(item)[3] contains("loggerName")))(
+ "{deploymentId: " as String ++ item.deploymentId  as String default " "
+++ ", instanceId: " as String ++ item.instanceId  as String default " "
+++ ", line: " as String ++ item.line  as String default " "
+++ ", loggerName: " as String ++ item.loggerName  as String default " "
+++ ", threadName: " as String ++ item.threadName  as String default " "
+++ ", message: " as String ++ item.message  as String default " "
+ ++ ", priority: " as String ++ item.priority  as String default " "
+ ++ ", timestamp: " as String ++ item.timestamp  as String default " "
+++ ", recordId: " as String ++ item.recordId  as String default " " ++ "}"
+
+ )
+ else (
+ "{status: " as String ++ item.status  as String default " "
+++ ", runtime: " as String ++ item.runtime  as String default " "
+++ ", name: " as String ++ item.name  as String default " "
+++ ", workers: " as String ++ item.workers  as String default " "
+++ ", memory: " as String ++ item.memory  as String default " "
+++ ", amount: " as String ++ item.amount  as String default " "
+++ ", totalOrgWorkers: " as String ++ item.totalOrgWorkers  as String default " "
+++ ", remainingOrgWorkers: " as String ++ item.remainingOrgWorkers  as String default " "
+++ ", deployedRegion: " as String ++ item.deployedRegion  as String default " "
+++ ", lastUpdateTime: " as String ++ item.lastUpdateTime  as String default " " ++ "}"
+
+ )
+
+
+)
+
+/*
+++ ", instanceId: " as String ++ item.instanceId default " " as String ++ ", line: " as String ++ item.line  as String default " "
+++ ", loggerName: " as String ++ item.loggerName  as String default " "
+++ ", threadName: " as String ++ item.threadName  as String default " "
+++ ", message: " as String ++ item.message  as String default " "
+++ ", priority: " as String ++ item.priority  as String default " "
+++ ", timestamp: " as String ++ item.timestamp  as String default " "
+++ ", recordId: " as String ++ item.recordId  as String default " "
+*/
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
 				<file:write doc:name="/writing the app logs to fileBeats to be fetched by logstash" doc:id="64d38c2a-04de-4673-aea1-b2ea958aa4e9" path='#[lower(vars.domain) ++ ".log"]' mode="APPEND" config-ref="File_Config">
-					<file:content ><![CDATA[#[vars.appLogs ++ [vars.cloudRes]]]]></file:content>
 				</file:write>
 				<os:store doc:name="Store" doc:id="b5a6f4be-36d8-4e48-ae2e-7fa132a855f4" objectStore="Object_store" key="#[vars.domain]">
 					<os:value ><![CDATA[#[vars.appLogs.recordId[-1]]]]></os:value>
@@ -1106,6 +1174,78 @@ payload]]></ee:set-payload>
 output application/java
 ---
 attributes.queryParams.key ++ " Deleted"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="elk-mule-grafana-pocFlow4" doc:id="d2b755a1-5525-40a7-9c63-4df0fd968bde" >
+		<ee:transform doc:name="Transform Message" doc:id="8f1e58bd-c5d1-49d9-ba6a-79659676a9c4" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "status": "STARTED",
+    "runtime": "4.3.0",
+    "name": "Micro",
+    "workers": "0.1 vCores x 1",
+    "memory": "500 MB memory",
+    "amount": 1,
+    "totalOrgWorkers": 1.0,
+    "remainingOrgWorkers": 0.7,
+    "deployedRegion": "us-east-2",
+    "lastUpdateTime": "2021-01-20 18:40:31"
+  }]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="6687f5f6-bda8-4009-be17-90b099951258" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var a = [{
+    "correlationId": "356e7100-5b25-11eb-89e0-06a6ed0d7cb2",
+    "message": "Request received to api",
+    "tracePoint": "START",
+    "priority": "INFO",
+    "timestamp": "2021-01-20T13:41:33.329Z",
+    "content": {
+      "HTTP Method": "POST",
+      "Client IP": "/3.133.136.224:19248"
+    },
+    "applicationName": "mytravel-experience-api",
+    "environment": "",
+    "deploymentId": "60082a893aa7650d84a955cd",
+    "line": 99,
+    "recordId": "17720076c1460082a893aa7650d84a955cd-060082ae800000063",
+    "fileName": "mytravel-interface.xml",
+    "rootContainer": "mytravel-experience-api-main",
+    "deploymentId": "60082a893aa7650d84a955cd"
+  },
+  {
+    "deploymentId": "60082a893aa7650d84a955cd",
+    "instanceId": "60082a893aa7650d84a955cd-0",
+    "line": 1,
+    "loggerName": "com.mulesoft.ch.queue.boot.PersistentQueueCoreExtension",
+    "threadName": "qtp1498287638-38",
+    "message": "The PersistentQueueManager is NOT configured. The normal VM queue manager will be used.",
+    "priority": "INFO",
+    "timestamp": "2021-01-20 18:36:46",
+    "recordId": "1771fe7945e60082a893aa7650d84a955cd-060082ae800000001"
+  }
+  ]
+  var b = {
+    "status": "STARTED",
+    "runtime": "4.3.0",
+    "name": "Micro",
+    "workers": "0.1 vCores x 1",
+    "memory": "500 MB memory",
+    "amount": 1,
+    "totalOrgWorkers": 1.0,
+    "remainingOrgWorkers": 0.7,
+    "deployedRegion": "us-east-2",
+    "lastUpdateTime": "2021-01-20 18:40:31"
+  }
+---
+a  ++ [b]]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
 	</flow>
